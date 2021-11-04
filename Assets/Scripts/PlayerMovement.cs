@@ -7,6 +7,7 @@ public class PlayerMovement : MonoBehaviour
     new private Rigidbody2D rigidbody;
     private BoxCollider2D boxCollider;
     private Animator animator;
+    private PauseController pauseController;
 
     public float moveSpeed = 5f;
     public float jumpSpeed = 10f;
@@ -29,62 +30,65 @@ public class PlayerMovement : MonoBehaviour
         boxCollider = GetComponent<BoxCollider2D>();
         animator = GetComponent<Animator>();
         baseGravity = rigidbody.gravityScale;
+        pauseController = GameObject.FindGameObjectWithTag("GameController")
+            .GetComponent<PauseController>();
     }
 
     // Update is called once per frame
     void Update() {
-        Vector2 velocity = rigidbody.velocity;
+        if (!pauseController.isPaused) {
 
-        isTouchingLadder = touchingLadder();
+            Vector2 velocity = rigidbody.velocity;
+            isTouchingLadder = touchingLadder();
+            if (!isOnLadder) {
+                // movement
+                float inputX = Input.GetAxisRaw("Horizontal");
+                velocity.x = moveSpeed * inputX;
 
-        if (!isOnLadder) {
-            // movement
-            float inputX = Input.GetAxisRaw("Horizontal");
-            velocity.x = moveSpeed * inputX;
+                if (Input.GetButtonDown("Jump") && isGrounded()) {
+                    velocity.y = jumpSpeed;
+                }
 
-            if (Input.GetButtonDown("Jump") && isGrounded()) {
-                velocity.y = jumpSpeed;
+                // jump gravity mechanics
+                float gravityFactor = 1f;
+
+                if (velocity.y < 0) {
+                    gravityFactor *= fallGravityFactor;
+                }
+
+                if (Input.GetButton("Jump")) {
+                    gravityFactor *= holdJumpGravityFactor;
+                }
+
+                rigidbody.gravityScale = baseGravity * gravityFactor;
+
+                if (touchingLadder() && (Input.GetAxisRaw("Vertical") != 0f)) {
+                    isOnLadder = true;
+                }
+
+            } else {
+                // ladder mechanics
+                rigidbody.gravityScale = 0;
+
+                bool jumpPressed = Input.GetButton("Jump");
+
+                velocity.y = Input.GetAxisRaw("Vertical") * ladderSpeed;
+                velocity.x = 0;
+
+                if (jumpPressed) {
+                    velocity.y = jumpSpeed;
+                }
+
+                if (isGrounded() || !touchingLadder() || jumpPressed) {
+                    isOnLadder = false;
+                }
             }
 
-            // jump gravity mechanics
-            float gravityFactor = 1f;
+            animator.SetFloat("vx", velocity.x);
+            animator.SetFloat("vy", velocity.y);
 
-            if (velocity.y < 0) {
-                gravityFactor *= fallGravityFactor;
-            }
-
-            if (Input.GetButton("Jump")) {
-                gravityFactor *= holdJumpGravityFactor;
-            }
-
-            rigidbody.gravityScale = baseGravity * gravityFactor;
-
-            if (touchingLadder() && (Input.GetAxisRaw("Vertical") != 0f)) {
-                isOnLadder = true;
-            }
-
-        } else {
-            // ladder mechanics
-            rigidbody.gravityScale = 0;
-
-            bool jumpPressed = Input.GetButton("Jump");
-
-            velocity.y = Input.GetAxisRaw("Vertical") * ladderSpeed;
-            velocity.x = 0;
-
-            if (jumpPressed) {
-                velocity.y = jumpSpeed;
-            }
-
-            if (!touchingLadder() || jumpPressed) {
-                isOnLadder = false;
-            }
+            rigidbody.velocity = velocity;
         }
-
-        animator.SetFloat("vx", velocity.x);
-        animator.SetFloat("vy", velocity.y);
-
-        rigidbody.velocity = velocity;
     }
 
     private bool isGrounded() {
