@@ -7,6 +7,10 @@ public class PauseController : MonoBehaviour {
     public GameObject pausePanel;
     private GameOverController gameOver;
 
+    void Start() {
+        gameOver = GetComponent<GameOverController>();
+    }
+
     // Update is called once per frame
     void Update()
     {
